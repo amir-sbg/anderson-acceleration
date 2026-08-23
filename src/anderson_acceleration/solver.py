@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral, Real
 from typing import Callable, Sequence, Union
 
 import numpy as np
@@ -161,6 +162,15 @@ def _validate_options(
     tol: float,
     max_iter: int,
 ) -> None:
+    if not isinstance(memory, Integral):
+        raise ValueError("memory must be an integer")
+    for name, value in (
+        ("beta", beta),
+        ("regularization", regularization),
+        ("tol", tol),
+    ):
+        if not isinstance(value, Real) or not np.isfinite(value):
+            raise ValueError(f"{name} must be finite")
     if memory < 0:
         raise ValueError("memory must be non-negative")
     if not 0.0 < beta <= 1.0:

@@ -124,6 +124,10 @@ def test_rejects_shape_changing_maps() -> None:
         ({"regularization": -1.0}, "regularization"),
         ({"tol": 0.0}, "tol"),
         ({"max_iter": 0}, "max_iter"),
+        ({"memory": 1.5}, "memory"),
+        ({"beta": np.nan}, "beta"),
+        ({"regularization": np.inf}, "regularization"),
+        ({"tol": np.inf}, "tol"),
     ],
 )
 def test_rejects_invalid_solver_options(kwargs: dict[str, float], message: str) -> None:
