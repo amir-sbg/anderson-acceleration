@@ -1,14 +1,14 @@
-# Anderson Acceleration
+# Anderson Acceleration for Implicit ML Layers
 
-A small NumPy implementation of Anderson acceleration for fixed-point iterations.
+A compact NumPy implementation of Anderson acceleration for fixed-point iteration, with a small implicit neural-layer example.
 
-The goal of this repository is to keep the method easy to read and easy to reuse. It is meant for experiments where an update already has the form:
+The goal of this repository is to keep the method easy to read and easy to reuse for experiments where an update already has the form:
 
 ```text
 x_next = g(x)
 ```
 
-Anderson acceleration keeps a short history of recent residuals, solves a small least-squares mixing problem, and proposes a better next iterate. In practice this can reduce the number of iterations for contractive nonlinear maps, self-consistency equations, implicit models, and other fixed-point style routines.
+Anderson acceleration keeps a short history of recent residuals, solves a small least-squares mixing problem, and proposes a better next iterate. In ML terms, this is useful for studying equilibrium-style layers, self-consistency updates, implicit models, and fixed-point reasoning blocks where the forward pass solves for a stable hidden state instead of stacking a fixed number of layers.
 
 ## What is included
 
@@ -17,6 +17,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - Dense NumPy implementation with no heavy solver framework.
 - Shape checks and finite-value validation.
 - A small result object with convergence status and residual history.
+- A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
 
 ## Installation
@@ -66,6 +67,35 @@ Anderson: x=0.7390851332, iterations=32
 
 The exact iteration count can vary slightly with numerical libraries and regularization settings, but the accelerated run should reach the same fixed point in fewer steps for this example.
 
+## ML-style implicit layer example
+
+The package also includes a tiny equilibrium-layer helper:
+
+```python
+import numpy as np
+
+from anderson_acceleration import solve_tanh_equilibrium
+
+result = solve_tanh_equilibrium(
+    input_vector=np.array([0.8, -0.4, 0.2]),
+    recurrent_weight=0.2 * np.eye(4),
+    input_weight=np.ones((4, 3)) * 0.1,
+    bias=np.zeros(4),
+    memory=4,
+)
+
+print(result.hidden_state)
+print(result.solver.residual_norm)
+```
+
+Run the full example:
+
+```bash
+python examples/implicit_tanh_layer.py
+```
+
+This is not a training framework. It is a small numerical experiment that mirrors the forward equilibrium solve used in implicit/deep-equilibrium style models.
+
 ## API
 
 ```python
@@ -107,20 +137,15 @@ AndersonResult(
 ```text
 .
 ├── examples/
-│   └── cosine_fixed_point.py
+│   ├── cosine_fixed_point.py
+│   └── implicit_tanh_layer.py
 ├── src/
 │   └── anderson_acceleration/
 │       ├── __init__.py
+│       ├── ml.py
 │       └── solver.py
 ├── tests/
 │   └── test_solver.py
 ├── pyproject.toml
 └── README.md
 ```
-
-## Suggested repository metadata
-
-Title: `Anderson Acceleration`
-
-About: `NumPy implementation of damped Anderson acceleration for fixed-point iteration, with tests and a simple comparison example.`
-

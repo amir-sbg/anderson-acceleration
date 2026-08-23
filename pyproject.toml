@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "anderson-acceleration"
 version = "0.1.0"
-description = "A small NumPy implementation of Anderson acceleration for fixed-point iterations."
+description = "NumPy Anderson acceleration experiments for fixed-point iteration and implicit ML layers."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -24,4 +24,3 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra"
-

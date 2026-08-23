@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from anderson_acceleration import anderson_accelerate
+from anderson_acceleration import anderson_accelerate, solve_tanh_equilibrium
 
 
 def test_cosine_fixed_point_needs_fewer_steps_than_picard() -> None:
@@ -71,6 +71,40 @@ def test_preserves_input_shape() -> None:
 
     assert result.solution.shape == target.shape
     np.testing.assert_allclose(result.solution, target, atol=1e-8)
+
+
+def test_tanh_equilibrium_layer_solves_fixed_point() -> None:
+    x = np.array([0.5, -0.25])
+    recurrent = np.array([[0.20, -0.05, 0.02], [0.03, 0.18, 0.00], [0.01, -0.04, 0.15]])
+    input_weight = np.array([[0.4, -0.1], [0.2, 0.3], [-0.3, 0.2]])
+    bias = np.array([0.01, -0.02, 0.03])
+    readout = np.array([[0.6, -0.2, 0.1], [-0.1, 0.2, 0.4]])
+
+    result = solve_tanh_equilibrium(
+        x,
+        recurrent,
+        input_weight,
+        bias,
+        readout_weight=readout,
+        memory=3,
+        tol=1e-10,
+        max_iter=40,
+    )
+
+    expected_hidden = np.tanh(recurrent @ result.hidden_state + input_weight @ x + bias)
+    assert result.solver.converged
+    np.testing.assert_allclose(result.hidden_state, expected_hidden, atol=1e-8)
+    assert result.logits.shape == (2,)
+
+
+def test_tanh_equilibrium_rejects_shape_mismatch() -> None:
+    with pytest.raises(ValueError, match="input_weight"):
+        solve_tanh_equilibrium(
+            np.array([1.0, 2.0]),
+            np.eye(3) * 0.1,
+            np.ones((2, 2)),
+            np.zeros(3),
+        )
 
 
 def test_rejects_shape_changing_maps() -> None:
