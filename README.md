@@ -1,6 +1,6 @@
 # Anderson Acceleration for Implicit ML Layers
 
-A compact NumPy implementation of Anderson acceleration for fixed-point iteration, with a small implicit neural-layer example.
+A compact NumPy implementation of Anderson acceleration for fixed-point iteration, with small ML examples around implicit neural layers and equilibrium feature maps.
 
 The goal of this repository is to keep the method easy to read and easy to reuse for experiments where an update already has the form:
 
@@ -18,6 +18,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - Shape checks and finite-value validation.
 - A small result object with convergence status and residual history.
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
+- A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
 
 ## Installation
@@ -96,6 +97,16 @@ python examples/implicit_tanh_layer.py
 
 This is not a training framework. It is a small numerical experiment that mirrors the forward equilibrium solve used in implicit/deep-equilibrium style models.
 
+## ML experiment: equilibrium features
+
+`examples/equilibrium_classifier.py` builds a synthetic two-moons dataset, solves a tanh equilibrium state for each input, and trains a small softmax readout on those fixed-point features. The point is not to make the dataset hard; it is to show how Anderson acceleration fits into an ML-style forward pass where the representation is found by convergence.
+
+```bash
+python examples/equilibrium_classifier.py
+```
+
+The script prints raw-feature accuracy, implicit-feature accuracy, convergence rate, average solver iterations, and final residuals.
+
 ## API
 
 ```python
@@ -138,10 +149,12 @@ AndersonResult(
 .
 ├── examples/
 │   ├── cosine_fixed_point.py
+│   ├── equilibrium_classifier.py
 │   └── implicit_tanh_layer.py
 ├── src/
 │   └── anderson_acceleration/
 │       ├── __init__.py
+│       ├── experiments.py
 │       ├── ml.py
 │       └── solver.py
 ├── tests/
