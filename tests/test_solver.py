@@ -2,6 +2,13 @@ import numpy as np
 import pytest
 
 from anderson_acceleration import anderson_accelerate, solve_tanh_equilibrium
+from anderson_acceleration.experiments import (
+    equilibrium_features,
+    fit_softmax_readout,
+    make_equilibrium_weights,
+    make_two_moons,
+    readout_accuracy,
+)
 
 
 def test_cosine_fixed_point_needs_fewer_steps_than_picard() -> None:
@@ -133,3 +140,49 @@ def test_rejects_shape_changing_maps() -> None:
 def test_rejects_invalid_solver_options(kwargs: dict[str, float], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         anderson_accelerate(lambda x: x, np.array([1.0]), **kwargs)
+
+
+def test_two_moons_generator_is_deterministic() -> None:
+    first_x, first_y = make_two_moons(n_samples=20, noise=0.03, seed=9)
+    second_x, second_y = make_two_moons(n_samples=20, noise=0.03, seed=9)
+
+    np.testing.assert_allclose(first_x, second_x)
+    np.testing.assert_array_equal(first_y, second_y)
+    assert first_x.shape == (20, 2)
+    assert set(first_y.tolist()) == {0, 1}
+
+
+def test_equilibrium_features_return_solver_diagnostics() -> None:
+    inputs, _ = make_two_moons(n_samples=8, noise=0.0, seed=2)
+    weights = make_equilibrium_weights(input_dim=2, hidden_dim=6, seed=4)
+    result = equilibrium_features(inputs, weights, memory=3, tol=1e-8, max_iter=60)
+
+    assert result.hidden_states.shape == (8, 6)
+    assert len(result.iterations) == 8
+    assert result.convergence_rate == 1.0
+    assert max(result.residuals) < 1e-6
+
+
+def test_softmax_readout_learns_simple_boundary() -> None:
+    features = np.array(
+        [
+            [-2.0, 0.0],
+            [-1.0, 0.2],
+            [1.0, -0.1],
+            [2.0, 0.0],
+        ]
+    )
+    labels = np.array([0, 0, 1, 1])
+
+    result = fit_softmax_readout(
+        features,
+        labels,
+        learning_rate=0.2,
+        epochs=120,
+        weight_decay=0.0,
+        seed=1,
+    )
+
+    assert result.train_accuracy == 1.0
+    assert result.loss_history[-1] < result.loss_history[0]
+    assert readout_accuracy(features, labels, result.weights, result.bias) == 1.0
