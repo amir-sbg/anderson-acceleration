@@ -96,8 +96,7 @@ def equilibrium_features(
     inputs = np.asarray(inputs, dtype=float)
     if inputs.ndim != 2 or 0 in inputs.shape:
         raise ValueError("inputs must be a non-empty two-dimensional matrix")
-    if weights.input_weight.shape[1] != inputs.shape[1]:
-        raise ValueError("input dimensionality does not match the equilibrium weights")
+    _validate_equilibrium_weights(weights, input_dim=inputs.shape[1])
 
     hidden_states = []
     iterations = []
@@ -193,6 +192,24 @@ def readout_accuracy(
     if predictions.shape != labels.shape:
         raise ValueError("predictions and labels must have the same shape")
     return float(np.mean(predictions == labels))
+
+
+def _validate_equilibrium_weights(weights: EquilibriumWeights, input_dim: int) -> None:
+    recurrent = np.asarray(weights.recurrent_weight, dtype=float)
+    input_weight = np.asarray(weights.input_weight, dtype=float)
+    bias = np.asarray(weights.bias, dtype=float)
+    if recurrent.ndim != 2 or recurrent.shape[0] != recurrent.shape[1]:
+        raise ValueError("recurrent_weight must be a square matrix")
+    if input_weight.shape != (recurrent.shape[0], input_dim):
+        raise ValueError("input_weight shape does not match hidden and input dimensions")
+    if bias.shape != (recurrent.shape[0],):
+        raise ValueError("bias length must match hidden dimension")
+    if not (
+        np.all(np.isfinite(recurrent))
+        and np.all(np.isfinite(input_weight))
+        and np.all(np.isfinite(bias))
+    ):
+        raise ValueError("equilibrium weights must contain only finite values")
 
 
 def _classification_arrays(

@@ -3,6 +3,7 @@ import pytest
 
 from anderson_acceleration import anderson_accelerate, solve_tanh_equilibrium
 from anderson_acceleration.experiments import (
+    EquilibriumWeights,
     equilibrium_features,
     fit_softmax_readout,
     make_equilibrium_weights,
@@ -161,6 +162,18 @@ def test_equilibrium_features_return_solver_diagnostics() -> None:
     assert len(result.iterations) == 8
     assert result.convergence_rate == 1.0
     assert max(result.residuals) < 1e-6
+
+
+def test_equilibrium_features_reject_malformed_weights() -> None:
+    inputs = np.zeros((3, 2))
+    weights = EquilibriumWeights(
+        recurrent_weight=np.eye(4),
+        input_weight=np.ones((3, 2)),
+        bias=np.zeros(4),
+    )
+
+    with pytest.raises(ValueError, match="input_weight"):
+        equilibrium_features(inputs, weights)
 
 
 def test_softmax_readout_learns_simple_boundary() -> None:
