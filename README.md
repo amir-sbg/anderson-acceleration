@@ -18,6 +18,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - Shape checks and finite-value validation.
 - A small result object with convergence status and residual history.
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
+- Local Jacobian and contraction-margin diagnostics for equilibrium solves.
 - A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
 
@@ -75,7 +76,7 @@ The package also includes a tiny equilibrium-layer helper:
 ```python
 import numpy as np
 
-from anderson_acceleration import solve_tanh_equilibrium
+from anderson_acceleration import solve_tanh_equilibrium, tanh_equilibrium_diagnostics
 
 result = solve_tanh_equilibrium(
     input_vector=np.array([0.8, -0.4, 0.2]),
@@ -87,6 +88,7 @@ result = solve_tanh_equilibrium(
 
 print(result.hidden_state)
 print(result.solver.residual_norm)
+print(tanh_equilibrium_diagnostics(result.hidden_state, 0.2 * np.eye(4)))
 ```
 
 Run the full example:

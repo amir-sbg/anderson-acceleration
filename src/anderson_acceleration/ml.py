@@ -14,6 +14,13 @@ class ImplicitLayerResult:
     solver: AndersonResult
 
 
+@dataclass(frozen=True)
+class EquilibriumDiagnostics:
+    recurrent_spectral_norm: float
+    local_jacobian_norm: float
+    contraction_margin: float
+
+
 def solve_tanh_equilibrium(
     input_vector,
     recurrent_weight,
@@ -79,6 +86,27 @@ def solve_tanh_equilibrium(
     hidden_state = solver.solution
     logits = _readout(hidden_state, readout_weight, readout_bias)
     return ImplicitLayerResult(hidden_state=hidden_state, logits=logits, solver=solver)
+
+
+def tanh_equilibrium_diagnostics(
+    hidden_state,
+    recurrent_weight,
+) -> EquilibriumDiagnostics:
+    """Estimate local stability of ``h = tanh(W_h h + b)`` around a solution."""
+    hidden = _as_vector(hidden_state, "hidden_state")
+    recurrent = _as_matrix(recurrent_weight, "recurrent_weight")
+    if recurrent.shape != (hidden.shape[0], hidden.shape[0]):
+        raise ValueError("recurrent_weight must have shape (hidden_dim, hidden_dim)")
+
+    derivative = 1.0 - hidden**2
+    local_jacobian = derivative[:, None] * recurrent
+    recurrent_norm = float(np.linalg.svd(recurrent, compute_uv=False)[0])
+    local_norm = float(np.linalg.svd(local_jacobian, compute_uv=False)[0])
+    return EquilibriumDiagnostics(
+        recurrent_spectral_norm=recurrent_norm,
+        local_jacobian_norm=local_norm,
+        contraction_margin=float(1.0 - local_norm),
+    )
 
 
 def _readout(hidden_state, readout_weight, readout_bias) -> np.ndarray:

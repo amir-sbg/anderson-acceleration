@@ -11,12 +11,18 @@ from .experiments import (
     readout_accuracy,
     readout_predict,
 )
-from .ml import ImplicitLayerResult, solve_tanh_equilibrium
+from .ml import (
+    EquilibriumDiagnostics,
+    ImplicitLayerResult,
+    solve_tanh_equilibrium,
+    tanh_equilibrium_diagnostics,
+)
 from .solver import AndersonResult, anderson_accelerate
 
 __all__ = [
     "AndersonResult",
     "EquilibriumFeatureResult",
+    "EquilibriumDiagnostics",
     "EquilibriumWeights",
     "ImplicitLayerResult",
     "ReadoutResult",
@@ -28,4 +34,5 @@ __all__ = [
     "readout_accuracy",
     "readout_predict",
     "solve_tanh_equilibrium",
+    "tanh_equilibrium_diagnostics",
 ]

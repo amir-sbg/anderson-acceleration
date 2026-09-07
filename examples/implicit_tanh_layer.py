@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from anderson_acceleration import solve_tanh_equilibrium
+from anderson_acceleration import solve_tanh_equilibrium, tanh_equilibrium_diagnostics
 
 
 def main() -> None:
@@ -41,6 +41,9 @@ def main() -> None:
     print(f"converged: {result.solver.converged}")
     print(f"iterations: {result.solver.iterations}")
     print(f"residual: {result.solver.residual_norm:.3e}")
+    diagnostics = tanh_equilibrium_diagnostics(result.hidden_state, recurrent)
+    print(f"local Jacobian norm: {diagnostics.local_jacobian_norm:.3f}")
+    print(f"contraction margin: {diagnostics.contraction_margin:.3f}")
     print(f"hidden: {np.round(result.hidden_state, 4)}")
     print(f"logits: {np.round(result.logits, 4)}")
 

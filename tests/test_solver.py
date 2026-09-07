@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
 
-from anderson_acceleration import anderson_accelerate, solve_tanh_equilibrium
+from anderson_acceleration import (
+    anderson_accelerate,
+    solve_tanh_equilibrium,
+    tanh_equilibrium_diagnostics,
+)
 from anderson_acceleration.experiments import (
     EquilibriumWeights,
     equilibrium_features,
@@ -127,6 +131,22 @@ def test_tanh_equilibrium_layer_solves_fixed_point() -> None:
     assert result.solver.converged
     np.testing.assert_allclose(result.hidden_state, expected_hidden, atol=1e-8)
     assert result.logits.shape == (2,)
+
+
+def test_tanh_equilibrium_diagnostics_report_local_contraction() -> None:
+    diagnostics = tanh_equilibrium_diagnostics(
+        hidden_state=np.zeros(3),
+        recurrent_weight=0.4 * np.eye(3),
+    )
+
+    assert diagnostics.recurrent_spectral_norm == pytest.approx(0.4)
+    assert diagnostics.local_jacobian_norm == pytest.approx(0.4)
+    assert diagnostics.contraction_margin == pytest.approx(0.6)
+
+
+def test_tanh_equilibrium_diagnostics_reject_shape_mismatch() -> None:
+    with pytest.raises(ValueError, match="recurrent_weight"):
+        tanh_equilibrium_diagnostics(np.zeros(2), np.eye(3))
 
 
 def test_tanh_equilibrium_rejects_shape_mismatch() -> None:
