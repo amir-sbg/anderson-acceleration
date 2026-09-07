@@ -13,6 +13,7 @@ from anderson_acceleration.experiments import (
     make_equilibrium_weights,
     make_two_moons,
     readout_accuracy,
+    solver_memory_sweep,
 )
 
 
@@ -207,6 +208,18 @@ def test_equilibrium_features_return_solver_diagnostics() -> None:
     assert len(result.iterations) == 8
     assert result.convergence_rate == 1.0
     assert max(result.residuals) < 1e-6
+
+
+def test_solver_memory_sweep_compares_equilibrium_settings() -> None:
+    inputs, _ = make_two_moons(n_samples=8, noise=0.0, seed=5)
+    weights = make_equilibrium_weights(input_dim=2, hidden_dim=6, seed=6)
+
+    rows = solver_memory_sweep(inputs, weights, memories=(0, 2), max_iter=60)
+
+    assert [row.memory for row in rows] == [0, 2]
+    assert all(row.convergence_rate == 1.0 for row in rows)
+    assert all(row.mean_iterations > 0 for row in rows)
+    assert all(row.hidden_state_std > 0 for row in rows)
 
 
 def test_equilibrium_features_reject_malformed_weights() -> None:

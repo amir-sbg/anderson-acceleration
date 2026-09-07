@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Optional
 
 import numpy as np
@@ -29,6 +30,16 @@ class ReadoutResult:
     bias: np.ndarray
     loss_history: tuple[float, ...]
     train_accuracy: float
+
+
+@dataclass(frozen=True)
+class SolverSweepRow:
+    memory: int
+    convergence_rate: float
+    mean_iterations: float
+    median_iterations: float
+    max_residual: float
+    hidden_state_std: float
 
 
 def make_two_moons(
@@ -124,6 +135,43 @@ def equilibrium_features(
         residuals=tuple(float(value) for value in residuals),
         convergence_rate=float(converged / len(inputs)),
     )
+
+
+def solver_memory_sweep(
+    inputs: np.ndarray,
+    weights: EquilibriumWeights,
+    *,
+    memories: tuple[int, ...] = (0, 1, 3, 5),
+    beta: float = 1.0,
+    tol: float = 1e-7,
+    max_iter: int = 80,
+) -> tuple[SolverSweepRow, ...]:
+    if not memories:
+        raise ValueError("memories must contain at least one value")
+    if any(not isinstance(memory, Integral) or memory < 0 for memory in memories):
+        raise ValueError("memories must be non-negative integers")
+
+    rows = []
+    for memory in memories:
+        result = equilibrium_features(
+            inputs,
+            weights,
+            memory=int(memory),
+            beta=beta,
+            tol=tol,
+            max_iter=max_iter,
+        )
+        rows.append(
+            SolverSweepRow(
+                memory=int(memory),
+                convergence_rate=result.convergence_rate,
+                mean_iterations=float(np.mean(result.iterations)),
+                median_iterations=float(np.median(result.iterations)),
+                max_residual=float(max(result.residuals)),
+                hidden_state_std=float(result.hidden_states.std()),
+            )
+        )
+    return tuple(rows)
 
 
 def fit_softmax_readout(

@@ -20,6 +20,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
 - Local Jacobian and contraction-margin diagnostics for equilibrium solves.
 - A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
+- A memory-sweep helper for checking convergence cost under different Anderson history lengths.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
 
 ## Installation
@@ -109,6 +110,14 @@ python examples/equilibrium_classifier.py
 
 The script prints raw-feature accuracy, implicit-feature accuracy, convergence rate, average solver iterations, and final residuals.
 
+For a quick solver-side ablation:
+
+```bash
+python examples/memory_sweep.py
+```
+
+That example keeps the dataset fixed and changes only the Anderson memory length, which makes the convergence/runtime tradeoff easier to inspect.
+
 ## API
 
 ```python
@@ -120,6 +129,8 @@ anderson_accelerate(
     regularization=1e-12,
     tol=1e-8,
     max_iter=100,
+    residual_guard=False,
+    guard_factor=1.25,
 )
 ```
 
@@ -132,6 +143,7 @@ Parameters:
 - `regularization`: diagonal stabilizer for the least-squares system.
 - `tol`: convergence threshold for `||g(x) - x||_2`.
 - `max_iter`: maximum number of fixed-point evaluations.
+- `residual_guard`: optionally reject an accelerated step when its residual grows too much.
 
 The function returns `AndersonResult`:
 
@@ -152,6 +164,7 @@ AndersonResult(
 ├── examples/
 │   ├── cosine_fixed_point.py
 │   ├── equilibrium_classifier.py
+│   ├── memory_sweep.py
 │   └── implicit_tanh_layer.py
 ├── src/
 │   └── anderson_acceleration/
