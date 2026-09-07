@@ -66,6 +66,30 @@ def test_memory_zero_runs_plain_fixed_point_iteration() -> None:
     assert len(result.residual_history) == 5
 
 
+def test_residual_guard_rejects_unstable_accelerated_steps() -> None:
+    def fixed_point(x: np.ndarray) -> np.ndarray:
+        return np.tanh(3.0 * x)
+
+    unguarded = anderson_accelerate(
+        fixed_point,
+        np.array([0.2]),
+        memory=3,
+        max_iter=8,
+        residual_guard=False,
+    )
+    guarded = anderson_accelerate(
+        fixed_point,
+        np.array([0.2]),
+        memory=3,
+        max_iter=8,
+        residual_guard=True,
+        guard_factor=1.0,
+    )
+
+    assert max(guarded.residual_history) < max(unguarded.residual_history)
+    assert guarded.residual_norm < unguarded.residual_norm
+
+
 def test_preserves_input_shape() -> None:
     target = np.array([[1.0, -2.0], [0.5, 3.0]])
 
@@ -136,6 +160,7 @@ def test_rejects_shape_changing_maps() -> None:
         ({"beta": np.nan}, "beta"),
         ({"regularization": np.inf}, "regularization"),
         ({"tol": np.inf}, "tol"),
+        ({"guard_factor": 0.9}, "guard_factor"),
     ],
 )
 def test_rejects_invalid_solver_options(kwargs: dict[str, float], message: str) -> None:

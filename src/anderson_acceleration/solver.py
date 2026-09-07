@@ -31,6 +31,8 @@ def anderson_accelerate(
     regularization: float = 1e-12,
     tol: float = 1e-8,
     max_iter: int = 100,
+    residual_guard: bool = False,
+    guard_factor: float = 1.25,
 ) -> AndersonResult:
     """Solve ``x = fixed_point(x)`` with Anderson acceleration.
 
@@ -53,9 +55,15 @@ def anderson_accelerate(
         Stop when ``||fixed_point(x) - x||_2 <= tol``.
     max_iter:
         Maximum number of fixed-point evaluations.
+    residual_guard:
+        When true, one extra fixed-point evaluation is used to reject an
+        accelerated candidate whose residual is much worse than the current
+        Picard update.
+    guard_factor:
+        Allowed residual-growth factor for guarded accelerated candidates.
     """
 
-    _validate_options(memory, beta, regularization, tol, max_iter)
+    _validate_options(memory, beta, regularization, tol, max_iter, guard_factor)
 
     x = _as_float_array(x0, "x0")
     original_shape = x.shape
@@ -93,10 +101,21 @@ def anderson_accelerate(
             alpha = _mixing_coefficients(f_history[-window:], regularization)
             recent_x = np.column_stack(x_history[-window:])
             recent_g = np.column_stack(g_history[-window:])
-            x_flat = (1.0 - beta) * (recent_x @ alpha) + beta * (recent_g @ alpha)
+            candidate = (1.0 - beta) * (recent_x @ alpha) + beta * (recent_g @ alpha)
 
-            if not np.all(np.isfinite(x_flat)):
+            if not np.all(np.isfinite(candidate)):
                 x_flat = g_flat
+            elif residual_guard:
+                x_flat = _guarded_candidate(
+                    fixed_point,
+                    candidate,
+                    g_flat,
+                    residual_norm,
+                    original_shape,
+                    guard_factor,
+                )
+            else:
+                x_flat = candidate
 
     return AndersonResult(
         solution=x_flat.reshape(original_shape).copy(),
@@ -146,6 +165,22 @@ def _evaluate_fixed_point(
     return value
 
 
+def _guarded_candidate(
+    fixed_point: FixedPointMap,
+    candidate_flat: np.ndarray,
+    fallback_flat: np.ndarray,
+    current_residual_norm: float,
+    original_shape: tuple[int, ...],
+    guard_factor: float,
+) -> np.ndarray:
+    candidate = candidate_flat.reshape(original_shape)
+    mapped = _evaluate_fixed_point(fixed_point, candidate, original_shape).reshape(-1)
+    candidate_residual_norm = float(np.linalg.norm(mapped - candidate_flat))
+    if candidate_residual_norm <= guard_factor * current_residual_norm:
+        return candidate_flat
+    return fallback_flat.copy()
+
+
 def _as_float_array(value: ArrayLike, name: str) -> np.ndarray:
     array = np.asarray(value, dtype=float)
     if array.size == 0:
@@ -161,6 +196,7 @@ def _validate_options(
     regularization: float,
     tol: float,
     max_iter: int,
+    guard_factor: float,
 ) -> None:
     if not isinstance(memory, Integral):
         raise ValueError("memory must be an integer")
@@ -168,6 +204,7 @@ def _validate_options(
         ("beta", beta),
         ("regularization", regularization),
         ("tol", tol),
+        ("guard_factor", guard_factor),
     ):
         if not isinstance(value, Real) or not np.isfinite(value):
             raise ValueError(f"{name} must be finite")
@@ -181,3 +218,5 @@ def _validate_options(
         raise ValueError("tol must be positive")
     if max_iter < 1:
         raise ValueError("max_iter must be at least 1")
+    if guard_factor < 1.0:
+        raise ValueError("guard_factor must be at least 1")
