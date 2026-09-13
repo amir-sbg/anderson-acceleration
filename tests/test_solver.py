@@ -3,6 +3,7 @@ import pytest
 
 from anderson_acceleration import (
     anderson_accelerate,
+    residual_diagnostics,
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
 )
@@ -69,6 +70,23 @@ def test_memory_zero_runs_plain_fixed_point_iteration() -> None:
     assert result.iterations == 5
     assert result.solution[0] == pytest.approx(1.9375)
     assert len(result.residual_history) == 5
+
+
+def test_residual_diagnostics_report_solver_progress() -> None:
+    report = residual_diagnostics([1.0, 0.5, 0.2, 0.21], stagnation_window=2)
+
+    assert report["iterations"] == 4
+    assert report["best_iteration"] == 3
+    assert report["best_residual"] == pytest.approx(0.2)
+    assert report["residual_reduction"] == pytest.approx(1.0 / 0.21)
+    assert not report["monotone_nonincreasing"]
+
+
+def test_residual_diagnostics_reject_bad_history() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        residual_diagnostics([])
+    with pytest.raises(ValueError, match="stagnation_window"):
+        residual_diagnostics([1.0], stagnation_window=0)
 
 
 def test_residual_guard_rejects_unstable_accelerated_steps() -> None:

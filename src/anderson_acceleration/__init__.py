@@ -19,7 +19,7 @@ from .ml import (
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
 )
-from .solver import AndersonResult, anderson_accelerate
+from .solver import AndersonResult, anderson_accelerate, residual_diagnostics
 
 __all__ = [
     "AndersonResult",
@@ -36,6 +36,7 @@ __all__ = [
     "make_two_moons",
     "readout_accuracy",
     "readout_predict",
+    "residual_diagnostics",
     "solve_tanh_equilibrium",
     "solver_memory_sweep",
     "tanh_equilibrium_diagnostics",

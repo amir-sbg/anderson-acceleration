@@ -22,6 +22,37 @@ class AndersonResult:
     residual_history: tuple[float, ...]
 
 
+def residual_diagnostics(
+    residual_history: Sequence[float],
+    *,
+    stagnation_window: int = 5,
+    improvement_tol: float = 1e-3,
+) -> dict[str, float | int | bool]:
+    values = _as_float_array(residual_history, "residual_history").reshape(-1)
+    if stagnation_window < 1:
+        raise ValueError("stagnation_window must be at least 1")
+    if improvement_tol < 0:
+        raise ValueError("improvement_tol must not be negative")
+
+    best_index = int(np.argmin(values))
+    initial = float(values[0])
+    final = float(values[-1])
+    recent = values[-min(stagnation_window, len(values)) :]
+    monotone = bool(np.all(np.diff(values) <= 1e-12))
+    return {
+        "iterations": int(len(values)),
+        "initial_residual": initial,
+        "final_residual": final,
+        "best_residual": float(values[best_index]),
+        "best_iteration": best_index + 1,
+        "residual_reduction": float(initial / max(final, 1e-300)),
+        "monotone_nonincreasing": monotone,
+        "stagnated": bool(
+            (recent[0] - recent[-1]) <= improvement_tol * max(recent[0], 1e-300)
+        ),
+    }
+
+
 def anderson_accelerate(
     fixed_point: FixedPointMap,
     x0: ArrayLike,

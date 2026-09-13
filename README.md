@@ -17,6 +17,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - Dense NumPy implementation with no heavy solver framework.
 - Shape checks and finite-value validation.
 - A small result object with convergence status and residual history.
+- Residual diagnostics for best iteration, reduction factor, monotonicity, and stagnation.
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
 - Local Jacobian and contraction-margin diagnostics for equilibrium solves.
 - A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
@@ -156,6 +157,9 @@ AndersonResult(
     residual_history,
 )
 ```
+
+`residual_diagnostics(result.residual_history)` summarizes the solver trace without
+rerunning the fixed-point map.
 
 ## Project structure
 
