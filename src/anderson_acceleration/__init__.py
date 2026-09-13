@@ -6,6 +6,7 @@ from .experiments import (
     ReadoutResult,
     RidgeFixedPointResult,
     SolverSweepRow,
+    StandardizedFeatures,
     equilibrium_features,
     fit_softmax_readout,
     fit_ridge_fixed_point,
@@ -14,6 +15,7 @@ from .experiments import (
     readout_accuracy,
     readout_predict,
     solver_memory_sweep,
+    standardize_features,
 )
 from .ml import (
     EquilibriumDiagnostics,
@@ -32,6 +34,7 @@ __all__ = [
     "ReadoutResult",
     "RidgeFixedPointResult",
     "SolverSweepRow",
+    "StandardizedFeatures",
     "anderson_accelerate",
     "equilibrium_features",
     "fit_ridge_fixed_point",
@@ -43,5 +46,6 @@ __all__ = [
     "residual_diagnostics",
     "solve_tanh_equilibrium",
     "solver_memory_sweep",
+    "standardize_features",
     "tanh_equilibrium_diagnostics",
 ]

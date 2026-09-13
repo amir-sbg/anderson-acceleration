@@ -16,6 +16,7 @@ from anderson_acceleration.experiments import (
     make_two_moons,
     readout_accuracy,
     solver_memory_sweep,
+    standardize_features,
 )
 
 
@@ -239,6 +240,24 @@ def test_solver_memory_sweep_compares_equilibrium_settings() -> None:
     assert all(row.convergence_rate == 1.0 for row in rows)
     assert all(row.mean_iterations > 0 for row in rows)
     assert all(row.hidden_state_std > 0 for row in rows)
+
+
+def test_standardize_features_can_reuse_train_statistics() -> None:
+    train = np.array([[1.0, 2.0], [3.0, 2.0], [5.0, 2.0]])
+    test = np.array([[7.0, 2.0]])
+
+    fitted = standardize_features(train)
+    transformed = standardize_features(test, mean=fitted.mean, scale=fitted.scale)
+
+    np.testing.assert_allclose(fitted.values.mean(axis=0), np.zeros(2), atol=1e-8)
+    assert fitted.scale[1] == 1.0
+    assert transformed.values.shape == (1, 2)
+    assert transformed.values[0, 0] > fitted.values[:, 0].max()
+
+
+def test_standardize_features_rejects_bad_statistics() -> None:
+    with pytest.raises(ValueError, match="feature dimension"):
+        standardize_features(np.ones((2, 3)), mean=np.zeros(2))
 
 
 def test_equilibrium_features_reject_malformed_weights() -> None:

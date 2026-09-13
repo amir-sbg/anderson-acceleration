@@ -21,6 +21,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
 - Local Jacobian and contraction-margin diagnostics for equilibrium solves.
 - A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
+- Train-statistic feature standardization for small readout experiments.
 - A ridge-regression fixed-point experiment for connecting Anderson acceleration to optimization.
 - A memory-sweep helper for checking convergence cost under different Anderson history lengths.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
@@ -104,7 +105,7 @@ This is not a training framework. It is a small numerical experiment that mirror
 
 ## ML experiment: equilibrium features
 
-`examples/equilibrium_classifier.py` builds a synthetic two-moons dataset, solves a tanh equilibrium state for each input, and trains a small softmax readout on those fixed-point features. The point is not to make the dataset hard; it is to show how Anderson acceleration fits into an ML-style forward pass where the representation is found by convergence.
+`examples/equilibrium_classifier.py` builds a synthetic two-moons dataset, solves a tanh equilibrium state for each input, and trains a small softmax readout on those fixed-point features. The point is not to make the dataset hard; it is to show how Anderson acceleration fits into an ML-style forward pass where the representation is found by convergence. `standardize_features` can be used to fit normalization on the training split and reuse the same statistics on validation or test features.
 
 ```bash
 python examples/equilibrium_classifier.py

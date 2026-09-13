@@ -52,6 +52,13 @@ class RidgeFixedPointResult:
     learning_rate: float
 
 
+@dataclass(frozen=True)
+class StandardizedFeatures:
+    values: np.ndarray
+    mean: np.ndarray
+    scale: np.ndarray
+
+
 def make_two_moons(
     n_samples: int = 160,
     noise: float = 0.08,
@@ -182,6 +189,33 @@ def solver_memory_sweep(
             )
         )
     return tuple(rows)
+
+
+def standardize_features(
+    features: np.ndarray,
+    *,
+    mean: np.ndarray | None = None,
+    scale: np.ndarray | None = None,
+) -> StandardizedFeatures:
+    x = np.asarray(features, dtype=float)
+    if x.ndim != 2 or 0 in x.shape:
+        raise ValueError("features must be a non-empty two-dimensional matrix")
+    if not np.all(np.isfinite(x)):
+        raise ValueError("features must contain only finite values")
+
+    fitted_mean = x.mean(axis=0) if mean is None else np.asarray(mean, dtype=float)
+    fitted_scale = x.std(axis=0) if scale is None else np.asarray(scale, dtype=float)
+    if fitted_mean.shape != (x.shape[1],) or fitted_scale.shape != (x.shape[1],):
+        raise ValueError("mean and scale must match the feature dimension")
+    if not np.all(np.isfinite(fitted_mean)) or not np.all(np.isfinite(fitted_scale)):
+        raise ValueError("mean and scale must contain only finite values")
+
+    safe_scale = np.where(fitted_scale > 0, fitted_scale, 1.0)
+    return StandardizedFeatures(
+        values=(x - fitted_mean) / safe_scale,
+        mean=fitted_mean.copy(),
+        scale=safe_scale.copy(),
+    )
 
 
 def fit_ridge_fixed_point(
