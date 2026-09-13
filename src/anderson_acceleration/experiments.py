@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 
 from .ml import solve_tanh_equilibrium
+from .solver import AndersonResult, anderson_accelerate, residual_diagnostics
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,15 @@ class SolverSweepRow:
     median_iterations: float
     max_residual: float
     hidden_state_std: float
+
+
+@dataclass(frozen=True)
+class RidgeFixedPointResult:
+    weights: np.ndarray
+    bias: float
+    solver: AndersonResult
+    residual_report: dict[str, float | int | bool]
+    learning_rate: float
 
 
 def make_two_moons(
@@ -174,6 +184,53 @@ def solver_memory_sweep(
     return tuple(rows)
 
 
+def fit_ridge_fixed_point(
+    features: np.ndarray,
+    targets: np.ndarray,
+    *,
+    l2_penalty: float = 1e-3,
+    learning_rate: float | None = None,
+    memory: int = 5,
+    beta: float = 1.0,
+    tol: float = 1e-8,
+    max_iter: int = 100,
+) -> RidgeFixedPointResult:
+    x, y = _regression_arrays(features, targets)
+    if l2_penalty < 0:
+        raise ValueError("l2_penalty must not be negative")
+
+    design = np.column_stack([x, np.ones(len(x), dtype=float)])
+    penalty = np.ones(design.shape[1], dtype=float)
+    penalty[-1] = 0.0
+    if learning_rate is None:
+        lipschitz = np.linalg.svd(design, compute_uv=False)[0] ** 2 / len(x)
+        learning_rate = 0.9 / max(float(lipschitz + l2_penalty), 1e-12)
+    if learning_rate <= 0:
+        raise ValueError("learning_rate must be positive")
+
+    def fixed_point(theta: np.ndarray) -> np.ndarray:
+        residual = design @ theta - y
+        gradient = design.T @ residual / len(x) + l2_penalty * penalty * theta
+        return theta - learning_rate * gradient
+
+    solver = anderson_accelerate(
+        fixed_point,
+        np.zeros(design.shape[1], dtype=float),
+        memory=memory,
+        beta=beta,
+        tol=tol,
+        max_iter=max_iter,
+        residual_guard=True,
+    )
+    return RidgeFixedPointResult(
+        weights=solver.solution[:-1].copy(),
+        bias=float(solver.solution[-1]),
+        solver=solver,
+        residual_report=residual_diagnostics(solver.residual_history),
+        learning_rate=float(learning_rate),
+    )
+
+
 def fit_softmax_readout(
     features: np.ndarray,
     labels: np.ndarray,
@@ -279,6 +336,18 @@ def _classification_arrays(
     if np.any(y >= classes):
         raise ValueError("labels must be smaller than num_classes")
     return x, y, classes
+
+
+def _regression_arrays(features: np.ndarray, targets: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    x = np.asarray(features, dtype=float)
+    y = np.asarray(targets, dtype=float)
+    if x.ndim != 2 or 0 in x.shape:
+        raise ValueError("features must be a non-empty two-dimensional matrix")
+    if y.ndim != 1 or y.shape[0] != x.shape[0]:
+        raise ValueError("targets must be one-dimensional and match features")
+    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
+        raise ValueError("features and targets must contain only finite values")
+    return x, y
 
 
 def _softmax(logits: np.ndarray) -> np.ndarray:

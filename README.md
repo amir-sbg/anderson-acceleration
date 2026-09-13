@@ -21,6 +21,7 @@ Anderson acceleration keeps a short history of recent residuals, solves a small 
 - A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
 - Local Jacobian and contraction-margin diagnostics for equilibrium solves.
 - A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
+- A ridge-regression fixed-point experiment for connecting Anderson acceleration to optimization.
 - A memory-sweep helper for checking convergence cost under different Anderson history lengths.
 - Tests for scalar, vector, and matrix-shaped fixed-point problems.
 
@@ -118,6 +119,11 @@ python examples/memory_sweep.py
 ```
 
 That example keeps the dataset fixed and changes only the Anderson memory length, which makes the convergence/runtime tradeoff easier to inspect.
+
+The experiments module also includes `fit_ridge_fixed_point`, which solves a
+regularized linear model by applying Anderson acceleration to the gradient-descent
+fixed-point map. It is intentionally small, but it gives a concrete ML optimization
+case where the fixed-point view is easy to inspect.
 
 ## API
 

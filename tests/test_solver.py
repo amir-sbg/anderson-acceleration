@@ -10,6 +10,7 @@ from anderson_acceleration import (
 from anderson_acceleration.experiments import (
     EquilibriumWeights,
     equilibrium_features,
+    fit_ridge_fixed_point,
     fit_softmax_readout,
     make_equilibrium_weights,
     make_two_moons,
@@ -275,3 +276,29 @@ def test_softmax_readout_learns_simple_boundary() -> None:
     assert result.train_accuracy == 1.0
     assert result.loss_history[-1] < result.loss_history[0]
     assert readout_accuracy(features, labels, result.weights, result.bias) == 1.0
+
+
+def test_ridge_fixed_point_matches_closed_form_solution() -> None:
+    features = np.array([[0.0], [1.0], [2.0], [3.0]])
+    targets = 1.0 + 2.0 * features[:, 0]
+
+    result = fit_ridge_fixed_point(
+        features,
+        targets,
+        l2_penalty=0.0,
+        memory=4,
+        tol=1e-10,
+        max_iter=50,
+    )
+
+    assert result.solver.converged
+    assert result.weights[0] == pytest.approx(2.0, abs=1e-7)
+    assert result.bias == pytest.approx(1.0, abs=1e-7)
+    assert result.residual_report["best_iteration"] >= 1
+
+
+def test_ridge_fixed_point_rejects_bad_shapes() -> None:
+    with pytest.raises(ValueError, match="targets"):
+        fit_ridge_fixed_point(np.ones((3, 2)), np.ones(2))
+    with pytest.raises(ValueError, match="l2_penalty"):
+        fit_ridge_fixed_point(np.ones((3, 2)), np.ones(3), l2_penalty=-0.1)
