@@ -18,6 +18,7 @@ class ImplicitLayerResult:
 class EquilibriumDiagnostics:
     recurrent_spectral_norm: float
     local_jacobian_norm: float
+    local_jacobian_spectral_radius: float
     contraction_margin: float
 
 
@@ -102,9 +103,11 @@ def tanh_equilibrium_diagnostics(
     local_jacobian = derivative[:, None] * recurrent
     recurrent_norm = float(np.linalg.svd(recurrent, compute_uv=False)[0])
     local_norm = float(np.linalg.svd(local_jacobian, compute_uv=False)[0])
+    local_radius = float(np.max(np.abs(np.linalg.eigvals(local_jacobian))))
     return EquilibriumDiagnostics(
         recurrent_spectral_norm=recurrent_norm,
         local_jacobian_norm=local_norm,
+        local_jacobian_spectral_radius=local_radius,
         contraction_margin=float(1.0 - local_norm),
     )
 

@@ -164,6 +164,7 @@ def test_tanh_equilibrium_diagnostics_report_local_contraction() -> None:
 
     assert diagnostics.recurrent_spectral_norm == pytest.approx(0.4)
     assert diagnostics.local_jacobian_norm == pytest.approx(0.4)
+    assert diagnostics.local_jacobian_spectral_radius == pytest.approx(0.4)
     assert diagnostics.contraction_margin == pytest.approx(0.6)
 
 
