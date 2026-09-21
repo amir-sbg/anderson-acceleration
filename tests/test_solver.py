@@ -89,6 +89,8 @@ def test_residual_diagnostics_reject_bad_history() -> None:
         residual_diagnostics([])
     with pytest.raises(ValueError, match="stagnation_window"):
         residual_diagnostics([1.0], stagnation_window=0)
+    with pytest.raises(ValueError, match="finite"):
+        residual_diagnostics([1.0, 0.5], improvement_tol=np.nan)
 
 
 def test_residual_guard_rejects_unstable_accelerated_steps() -> None:
@@ -258,6 +260,8 @@ def test_standardize_features_can_reuse_train_statistics() -> None:
 def test_standardize_features_rejects_bad_statistics() -> None:
     with pytest.raises(ValueError, match="feature dimension"):
         standardize_features(np.ones((2, 3)), mean=np.zeros(2))
+    with pytest.raises(ValueError, match="non-negative"):
+        standardize_features(np.ones((2, 2)), scale=np.array([1.0, -1.0]))
 
 
 def test_equilibrium_features_reject_malformed_weights() -> None:

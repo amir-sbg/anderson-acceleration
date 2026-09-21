@@ -31,8 +31,8 @@ def residual_diagnostics(
     values = _as_float_array(residual_history, "residual_history").reshape(-1)
     if stagnation_window < 1:
         raise ValueError("stagnation_window must be at least 1")
-    if improvement_tol < 0:
-        raise ValueError("improvement_tol must not be negative")
+    if not np.isfinite(improvement_tol) or improvement_tol < 0:
+        raise ValueError("improvement_tol must be finite and not negative")
 
     best_index = int(np.argmin(values))
     initial = float(values[0])

@@ -209,6 +209,8 @@ def standardize_features(
         raise ValueError("mean and scale must match the feature dimension")
     if not np.all(np.isfinite(fitted_mean)) or not np.all(np.isfinite(fitted_scale)):
         raise ValueError("mean and scale must contain only finite values")
+    if np.any(fitted_scale < 0):
+        raise ValueError("scale must be non-negative")
 
     safe_scale = np.where(fitted_scale > 0, fitted_scale, 1.0)
     return StandardizedFeatures(
