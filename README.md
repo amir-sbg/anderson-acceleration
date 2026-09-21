@@ -1,44 +1,40 @@
 # Anderson Acceleration for Implicit ML Layers
 
-A compact NumPy implementation of Anderson acceleration for fixed-point iteration, with small ML examples around implicit neural layers and equilibrium feature maps.
+A compact NumPy implementation of Anderson acceleration for fixed-point maps, with experiments that connect the solver to implicit neural layers, equilibrium features, and fixed-point optimization.
 
-The goal of this repository is to keep the method easy to read and easy to reuse for experiments where an update already has the form:
+Given an update
 
 ```text
 x_next = g(x)
 ```
 
-Anderson acceleration keeps a short history of recent residuals, solves a small least-squares mixing problem, and proposes a better next iterate. In ML terms, this is useful for studying equilibrium-style layers, self-consistency updates, implicit models, and fixed-point reasoning blocks where the forward pass solves for a stable hidden state instead of stacking a fixed number of layers.
+the solver stores recent residuals `g(x) - x`, solves a small constrained least-squares problem, and mixes recent iterates. `memory=0` gives ordinary fixed-point iteration. Damping, Tikhonov regularization, and an optional residual guard make the numerical trade-offs explicit.
 
-## What is included
+## Included
 
-- Damped Anderson acceleration with configurable memory.
-- Plain fixed-point iteration fallback with `memory=0`.
-- Dense NumPy implementation with no heavy solver framework.
-- Shape checks and finite-value validation.
-- A small result object with convergence status and residual history.
-- Residual diagnostics for best iteration, reduction factor, monotonicity, and stagnation.
-- A NumPy implicit tanh layer helper for `h = tanh(W_h h + W_x x + b)`.
-- Local Jacobian and contraction-margin diagnostics for equilibrium solves.
-- A tiny two-moons classifier that uses fixed-point hidden states as learned-style features.
-- Train-statistic feature standardization for small readout experiments.
-- A ridge-regression fixed-point experiment for connecting Anderson acceleration to optimization.
-- A memory-sweep helper for checking convergence cost under different Anderson history lengths.
-- Tests for scalar, vector, and matrix-shaped fixed-point problems.
+- scalar, vector, and matrix-shaped fixed-point solves
+- convergence and residual-history diagnostics
+- an implicit tanh layer of the form `h = tanh(W_h h + W_x x + b)`
+- local Jacobian norm, spectral radius, and contraction-margin checks
+- a two-moons classifier using converged hidden states as features
+- train-statistic feature standardization and a softmax readout
+- a ridge-regression gradient fixed-point experiment
+- memory sweeps for comparing convergence cost and stability
 
-## Installation
+This is a numerical experiment library rather than a full training framework. The focus is the forward equilibrium solve and the behavior of acceleration around it.
+
+## Setup
 
 ```bash
 git clone https://github.com/amir-sbg/anderson-acceleration.git
 cd anderson-acceleration
-
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-## Quick example
+## Quick start
 
 ```python
 import numpy as np
@@ -53,78 +49,19 @@ result = anderson_accelerate(
     max_iter=100,
 )
 
-print(result.solution)
-print(result.iterations)
+print(result.solution, result.iterations)
 ```
 
-Run the included comparison example:
+Run the examples:
 
 ```bash
 python examples/cosine_fixed_point.py
-```
-
-Example output:
-
-```text
-Solving x = cos(x)
-Picard:   x=0.7390851332, iterations=58
-Anderson: x=0.7390851332, iterations=32
-```
-
-The exact iteration count can vary slightly with numerical libraries and regularization settings, but the accelerated run should reach the same fixed point in fewer steps for this example.
-
-## ML-style implicit layer example
-
-The package also includes a tiny equilibrium-layer helper:
-
-```python
-import numpy as np
-
-from anderson_acceleration import solve_tanh_equilibrium, tanh_equilibrium_diagnostics
-
-result = solve_tanh_equilibrium(
-    input_vector=np.array([0.8, -0.4, 0.2]),
-    recurrent_weight=0.2 * np.eye(4),
-    input_weight=np.ones((4, 3)) * 0.1,
-    bias=np.zeros(4),
-    memory=4,
-)
-
-print(result.hidden_state)
-print(result.solver.residual_norm)
-print(tanh_equilibrium_diagnostics(result.hidden_state, 0.2 * np.eye(4)))
-```
-
-Run the full example:
-
-```bash
 python examples/implicit_tanh_layer.py
-```
-
-This is not a training framework. It is a small numerical experiment that mirrors the forward equilibrium solve used in implicit/deep-equilibrium style models.
-
-## ML experiment: equilibrium features
-
-`examples/equilibrium_classifier.py` builds a synthetic two-moons dataset, solves a tanh equilibrium state for each input, and trains a small softmax readout on those fixed-point features. The point is not to make the dataset hard; it is to show how Anderson acceleration fits into an ML-style forward pass where the representation is found by convergence. `standardize_features` can be used to fit normalization on the training split and reuse the same statistics on validation or test features.
-
-```bash
 python examples/equilibrium_classifier.py
-```
-
-The script prints raw-feature accuracy, implicit-feature accuracy, convergence rate, average solver iterations, and final residuals.
-
-For a quick solver-side ablation:
-
-```bash
 python examples/memory_sweep.py
 ```
 
-That example keeps the dataset fixed and changes only the Anderson memory length, which makes the convergence/runtime tradeoff easier to inspect.
-
-The experiments module also includes `fit_ridge_fixed_point`, which solves a
-regularized linear model by applying Anderson acceleration to the gradient-descent
-fixed-point map. It is intentionally small, but it gives a concrete ML optimization
-case where the fixed-point view is easy to inspect.
+The classifier compares raw two-moons inputs with equilibrium hidden features. The memory sweep keeps the data and weights fixed while changing only the solver history length.
 
 ## API
 
@@ -142,49 +79,21 @@ anderson_accelerate(
 )
 ```
 
-Parameters:
+The returned `AndersonResult` contains the solution, convergence flag, iteration count, final residual, and residual history. `residual_diagnostics` summarizes reduction, best iteration, monotonicity, and stagnation without rerunning the map.
 
-- `fixed_point`: function that evaluates one update `g(x)`.
-- `x0`: initial scalar, vector, or dense array.
-- `memory`: number of previous residuals used for mixing.
-- `beta`: damping factor for the accelerated update.
-- `regularization`: diagonal stabilizer for the least-squares system.
-- `tol`: convergence threshold for `||g(x) - x||_2`.
-- `max_iter`: maximum number of fixed-point evaluations.
-- `residual_guard`: optionally reject an accelerated step when its residual grows too much.
+The ML helpers expose `solve_tanh_equilibrium`, `tanh_equilibrium_diagnostics`, `equilibrium_features`, `standardize_features`, `fit_softmax_readout`, and `fit_ridge_fixed_point`.
 
-The function returns `AndersonResult`:
-
-```python
-AndersonResult(
-    solution,
-    converged,
-    iterations,
-    residual_norm,
-    residual_history,
-)
-```
-
-`residual_diagnostics(result.residual_history)` summarizes the solver trace without
-rerunning the fixed-point map.
-
-## Project structure
+## Project layout
 
 ```text
-.
-├── examples/
-│   ├── cosine_fixed_point.py
-│   ├── equilibrium_classifier.py
-│   ├── memory_sweep.py
-│   └── implicit_tanh_layer.py
-├── src/
-│   └── anderson_acceleration/
-│       ├── __init__.py
-│       ├── experiments.py
-│       ├── ml.py
-│       └── solver.py
-├── tests/
-│   └── test_solver.py
-├── pyproject.toml
-└── README.md
+examples/
+├── cosine_fixed_point.py
+├── equilibrium_classifier.py
+├── implicit_tanh_layer.py
+└── memory_sweep.py
+src/anderson_acceleration/
+├── solver.py       Anderson iteration and diagnostics
+├── ml.py           implicit-layer helpers and stability checks
+└── experiments.py  datasets, readouts, and sweeps
+tests/test_solver.py
 ```
