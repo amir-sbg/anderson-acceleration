@@ -16,6 +16,7 @@ the solver stores recent residuals `g(x) - x`, solves a small constrained least-
 - convergence and residual-history diagnostics
 - an implicit tanh layer of the form `h = tanh(W_h h + W_x x + b)`
 - local Jacobian norm, spectral radius, and contraction-margin checks
+- implicit adjoint solves with backward-system conditioning diagnostics
 - a two-moons classifier using converged hidden states as features
 - train-statistic feature standardization and a softmax readout
 - a ridge-regression gradient fixed-point experiment
@@ -82,7 +83,7 @@ anderson_accelerate(
 
 The returned `AndersonResult` contains the solution, convergence flag, iteration count, final residual, residual history, accelerated-step count, and guard-rejection count. `residual_diagnostics` summarizes reduction, best iteration, monotonicity, and stagnation without rerunning the map.
 
-The ML helpers expose `solve_tanh_equilibrium`, `tanh_equilibrium_diagnostics`, `equilibrium_features`, `standardize_features`, `fit_softmax_readout`, and `fit_ridge_fixed_point`.
+The ML helpers expose `solve_tanh_equilibrium`, `solve_tanh_adjoint`, `tanh_equilibrium_diagnostics`, `equilibrium_features`, `standardize_features`, `fit_softmax_readout`, and `fit_ridge_fixed_point`.
 
 ## Project layout
 

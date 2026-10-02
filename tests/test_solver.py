@@ -4,6 +4,7 @@ import pytest
 from anderson_acceleration import (
     anderson_accelerate,
     residual_diagnostics,
+    solve_tanh_adjoint,
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
 )
@@ -189,6 +190,23 @@ def test_tanh_equilibrium_diagnostics_report_local_contraction() -> None:
 def test_tanh_equilibrium_diagnostics_reject_shape_mismatch() -> None:
     with pytest.raises(ValueError, match="recurrent_weight"):
         tanh_equilibrium_diagnostics(np.zeros(2), np.eye(3))
+
+
+def test_tanh_adjoint_matches_diagonal_closed_form() -> None:
+    result = solve_tanh_adjoint(
+        hidden_state=np.zeros(3),
+        recurrent_weight=0.2 * np.eye(3),
+        hidden_gradient=np.ones(3),
+    )
+
+    np.testing.assert_allclose(result.adjoint, np.full(3, 1.25))
+    assert result.linear_residual_norm < 1e-12
+    assert result.system_condition_number == pytest.approx(1.0)
+
+
+def test_tanh_adjoint_rejects_gradient_shape_mismatch() -> None:
+    with pytest.raises(ValueError, match="hidden_gradient"):
+        solve_tanh_adjoint(np.zeros(3), 0.2 * np.eye(3), np.ones(2))
 
 
 def test_tanh_equilibrium_rejects_shape_mismatch() -> None:

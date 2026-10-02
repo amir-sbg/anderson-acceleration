@@ -22,6 +22,13 @@ class EquilibriumDiagnostics:
     contraction_margin: float
 
 
+@dataclass(frozen=True)
+class ImplicitAdjointResult:
+    adjoint: np.ndarray
+    linear_residual_norm: float
+    system_condition_number: float
+
+
 def solve_tanh_equilibrium(
     input_vector,
     recurrent_weight,
@@ -109,6 +116,42 @@ def tanh_equilibrium_diagnostics(
         local_jacobian_norm=local_norm,
         local_jacobian_spectral_radius=local_radius,
         contraction_margin=float(1.0 - local_norm),
+    )
+
+
+def solve_tanh_adjoint(
+    hidden_state,
+    recurrent_weight,
+    hidden_gradient,
+) -> ImplicitAdjointResult:
+    """Solve the implicit backward system for a converged tanh layer.
+
+    For ``h = f(h, x)``, implicit differentiation requires the adjoint
+    ``v`` satisfying ``(I - J_f(h)^T) v = dL/dh``. This avoids unrolling the
+    forward iterations and makes the conditioning of the backward solve
+    directly observable.
+    """
+    hidden = _as_vector(hidden_state, "hidden_state")
+    recurrent = _as_matrix(recurrent_weight, "recurrent_weight")
+    gradient = _as_vector(hidden_gradient, "hidden_gradient")
+    hidden_dim = hidden.shape[0]
+    if recurrent.shape != (hidden_dim, hidden_dim):
+        raise ValueError("recurrent_weight must have shape (hidden_dim, hidden_dim)")
+    if gradient.shape != hidden.shape:
+        raise ValueError("hidden_gradient must have length hidden_dim")
+
+    derivative = 1.0 - hidden**2
+    jacobian = derivative[:, None] * recurrent
+    system = np.eye(hidden_dim) - jacobian.T
+    try:
+        adjoint = np.linalg.solve(system, gradient)
+    except np.linalg.LinAlgError:
+        adjoint = np.linalg.lstsq(system, gradient, rcond=None)[0]
+    residual = system @ adjoint - gradient
+    return ImplicitAdjointResult(
+        adjoint=adjoint,
+        linear_residual_norm=float(np.linalg.norm(residual)),
+        system_condition_number=float(np.linalg.cond(system)),
     )
 
 

@@ -19,7 +19,9 @@ from .experiments import (
 )
 from .ml import (
     EquilibriumDiagnostics,
+    ImplicitAdjointResult,
     ImplicitLayerResult,
+    solve_tanh_adjoint,
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
 )
@@ -30,6 +32,7 @@ __all__ = [
     "EquilibriumFeatureResult",
     "EquilibriumDiagnostics",
     "EquilibriumWeights",
+    "ImplicitAdjointResult",
     "ImplicitLayerResult",
     "ReadoutResult",
     "RidgeFixedPointResult",
@@ -44,6 +47,7 @@ __all__ = [
     "readout_accuracy",
     "readout_predict",
     "residual_diagnostics",
+    "solve_tanh_adjoint",
     "solve_tanh_equilibrium",
     "solver_memory_sweep",
     "standardize_features",
