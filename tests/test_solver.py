@@ -130,6 +130,9 @@ def test_residual_guard_rejects_unstable_accelerated_steps() -> None:
 
     assert max(guarded.residual_history) < max(unguarded.residual_history)
     assert guarded.residual_norm < unguarded.residual_norm
+    assert guarded.guard_rejections > 0
+    assert unguarded.guard_rejections == 0
+    assert unguarded.accelerated_steps > 0
 
 
 def test_preserves_input_shape() -> None:

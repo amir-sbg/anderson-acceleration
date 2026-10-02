@@ -80,7 +80,7 @@ anderson_accelerate(
 )
 ```
 
-The returned `AndersonResult` contains the solution, convergence flag, iteration count, final residual, and residual history. `residual_diagnostics` summarizes reduction, best iteration, monotonicity, and stagnation without rerunning the map.
+The returned `AndersonResult` contains the solution, convergence flag, iteration count, final residual, residual history, accelerated-step count, and guard-rejection count. `residual_diagnostics` summarizes reduction, best iteration, monotonicity, and stagnation without rerunning the map.
 
 The ML helpers expose `solve_tanh_equilibrium`, `tanh_equilibrium_diagnostics`, `equilibrium_features`, `standardize_features`, `fit_softmax_readout`, and `fit_ridge_fixed_point`.
 

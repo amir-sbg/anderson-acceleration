@@ -20,6 +20,8 @@ class AndersonResult:
     iterations: int
     residual_norm: float
     residual_history: tuple[float, ...]
+    accelerated_steps: int
+    guard_rejections: int
 
 
 def residual_diagnostics(
@@ -108,6 +110,8 @@ def anderson_accelerate(
     g_history: list[np.ndarray] = []
     f_history: list[np.ndarray] = []
     residual_history: list[float] = []
+    accelerated_steps = 0
+    guard_rejections = 0
 
     for iteration in range(1, max_iter + 1):
         g = _evaluate_fixed_point(fixed_point, x_flat.reshape(original_shape), original_shape)
@@ -124,6 +128,8 @@ def anderson_accelerate(
                 iterations=iteration,
                 residual_norm=residual_norm,
                 residual_history=tuple(residual_history),
+                accelerated_steps=accelerated_steps,
+                guard_rejections=guard_rejections,
             )
 
         x_history.append(x_flat.copy())
@@ -142,7 +148,7 @@ def anderson_accelerate(
             if not np.all(np.isfinite(candidate)):
                 x_flat = g_flat
             elif residual_guard:
-                x_flat = _guarded_candidate(
+                x_flat, rejected = _guarded_candidate(
                     fixed_point,
                     candidate,
                     g_flat,
@@ -150,8 +156,11 @@ def anderson_accelerate(
                     original_shape,
                     guard_factor,
                 )
+                guard_rejections += int(rejected)
+                accelerated_steps += int(not rejected)
             else:
                 x_flat = candidate
+                accelerated_steps += 1
 
     return AndersonResult(
         solution=x_flat.reshape(original_shape).copy(),
@@ -159,6 +168,8 @@ def anderson_accelerate(
         iterations=max_iter,
         residual_norm=residual_history[-1],
         residual_history=tuple(residual_history),
+        accelerated_steps=accelerated_steps,
+        guard_rejections=guard_rejections,
     )
 
 
@@ -189,7 +200,7 @@ def _evaluate_fixed_point(
     fixed_point: FixedPointMap,
     x: np.ndarray,
     expected_shape: tuple[int, ...],
-) -> np.ndarray:
+) -> tuple[np.ndarray, bool]:
     value = _as_float_array(fixed_point(x.copy()), "fixed_point(x)")
 
     if value.shape != expected_shape:
@@ -213,8 +224,8 @@ def _guarded_candidate(
     mapped = _evaluate_fixed_point(fixed_point, candidate, original_shape).reshape(-1)
     candidate_residual_norm = float(np.linalg.norm(mapped - candidate_flat))
     if candidate_residual_norm <= guard_factor * current_residual_norm:
-        return candidate_flat
-    return fallback_flat.copy()
+        return candidate_flat, False
+    return fallback_flat.copy(), True
 
 
 def _as_float_array(value: ArrayLike, name: str) -> np.ndarray:
