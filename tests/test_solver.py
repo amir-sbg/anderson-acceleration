@@ -74,6 +74,21 @@ def test_memory_zero_runs_plain_fixed_point_iteration() -> None:
     assert len(result.residual_history) == 5
 
 
+def test_relative_tolerance_scales_with_large_equilibrium() -> None:
+    fixed_point = lambda x: 0.5 * x + 500_000.0
+
+    absolute_only = anderson_accelerate(
+        fixed_point, np.array([0.0]), memory=0, tol=1e-8, max_iter=25
+    )
+    scale_aware = anderson_accelerate(
+        fixed_point, np.array([0.0]), memory=0, tol=1e-8, rtol=1e-6, max_iter=25
+    )
+
+    assert not absolute_only.converged
+    assert scale_aware.converged
+    assert scale_aware.iterations < absolute_only.iterations
+
+
 def test_residual_diagnostics_report_solver_progress() -> None:
     report = residual_diagnostics([1.0, 0.5, 0.2, 0.21], stagnation_window=2)
 
@@ -204,6 +219,7 @@ def test_rejects_shape_changing_maps() -> None:
         ({"beta": np.nan}, "beta"),
         ({"regularization": np.inf}, "regularization"),
         ({"tol": np.inf}, "tol"),
+        ({"rtol": -1e-3}, "rtol"),
         ({"guard_factor": 0.9}, "guard_factor"),
     ],
 )

@@ -73,6 +73,7 @@ anderson_accelerate(
     beta=1.0,
     regularization=1e-12,
     tol=1e-8,
+    rtol=0.0,
     max_iter=100,
     residual_guard=False,
     guard_factor=1.25,

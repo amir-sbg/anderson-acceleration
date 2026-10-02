@@ -61,6 +61,7 @@ def anderson_accelerate(
     beta: float = 1.0,
     regularization: float = 1e-12,
     tol: float = 1e-8,
+    rtol: float = 0.0,
     max_iter: int = 100,
     residual_guard: bool = False,
     guard_factor: float = 1.25,
@@ -83,7 +84,10 @@ def anderson_accelerate(
     regularization:
         Small diagonal stabilizer for the residual Gram matrix.
     tol:
-        Stop when ``||fixed_point(x) - x||_2 <= tol``.
+        Absolute residual tolerance.
+    rtol:
+        Relative residual tolerance. The stopping threshold is ``tol + rtol``
+        times the larger norm of the current iterate and mapped iterate.
     max_iter:
         Maximum number of fixed-point evaluations.
     residual_guard:
@@ -94,7 +98,7 @@ def anderson_accelerate(
         Allowed residual-growth factor for guarded accelerated candidates.
     """
 
-    _validate_options(memory, beta, regularization, tol, max_iter, guard_factor)
+    _validate_options(memory, beta, regularization, tol, rtol, max_iter, guard_factor)
 
     x = _as_float_array(x0, "x0")
     original_shape = x.shape
@@ -112,7 +116,8 @@ def anderson_accelerate(
         residual_norm = float(np.linalg.norm(residual))
         residual_history.append(residual_norm)
 
-        if residual_norm <= tol:
+        scale = max(float(np.linalg.norm(x_flat)), float(np.linalg.norm(g_flat)))
+        if residual_norm <= tol + rtol * scale:
             return AndersonResult(
                 solution=g.copy(),
                 converged=True,
@@ -226,6 +231,7 @@ def _validate_options(
     beta: float,
     regularization: float,
     tol: float,
+    rtol: float,
     max_iter: int,
     guard_factor: float,
 ) -> None:
@@ -235,6 +241,7 @@ def _validate_options(
         ("beta", beta),
         ("regularization", regularization),
         ("tol", tol),
+        ("rtol", rtol),
         ("guard_factor", guard_factor),
     ):
         if not isinstance(value, Real) or not np.isfinite(value):
@@ -247,6 +254,8 @@ def _validate_options(
         raise ValueError("regularization must be non-negative")
     if tol <= 0:
         raise ValueError("tol must be positive")
+    if rtol < 0:
+        raise ValueError("rtol must be non-negative")
     if max_iter < 1:
         raise ValueError("max_iter must be at least 1")
     if guard_factor < 1.0:
