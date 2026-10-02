@@ -29,6 +29,12 @@ class ImplicitAdjointResult:
     system_condition_number: float
 
 
+@dataclass(frozen=True)
+class ImplicitInputGradientResult:
+    input_gradient: np.ndarray
+    adjoint: ImplicitAdjointResult
+
+
 def solve_tanh_equilibrium(
     input_vector,
     recurrent_weight,
@@ -153,6 +159,24 @@ def solve_tanh_adjoint(
         linear_residual_norm=float(np.linalg.norm(residual)),
         system_condition_number=float(np.linalg.cond(system)),
     )
+
+
+def tanh_implicit_input_gradient(
+    hidden_state,
+    recurrent_weight,
+    input_weight,
+    hidden_gradient,
+) -> ImplicitInputGradientResult:
+    """Differentiate a converged tanh equilibrium with respect to its input."""
+    hidden = _as_vector(hidden_state, "hidden_state")
+    input_matrix = _as_matrix(input_weight, "input_weight")
+    if input_matrix.shape[0] != hidden.shape[0]:
+        raise ValueError("input_weight must have shape (hidden_dim, input_dim)")
+
+    adjoint = solve_tanh_adjoint(hidden, recurrent_weight, hidden_gradient)
+    activation_derivative = 1.0 - hidden**2
+    input_gradient = input_matrix.T @ (activation_derivative * adjoint.adjoint)
+    return ImplicitInputGradientResult(input_gradient=input_gradient, adjoint=adjoint)
 
 
 def _readout(hidden_state, readout_weight, readout_bias) -> np.ndarray:

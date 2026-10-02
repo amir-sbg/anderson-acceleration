@@ -20,10 +20,12 @@ from .experiments import (
 from .ml import (
     EquilibriumDiagnostics,
     ImplicitAdjointResult,
+    ImplicitInputGradientResult,
     ImplicitLayerResult,
     solve_tanh_adjoint,
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
+    tanh_implicit_input_gradient,
 )
 from .solver import AndersonResult, anderson_accelerate, residual_diagnostics
 
@@ -33,6 +35,7 @@ __all__ = [
     "EquilibriumDiagnostics",
     "EquilibriumWeights",
     "ImplicitAdjointResult",
+    "ImplicitInputGradientResult",
     "ImplicitLayerResult",
     "ReadoutResult",
     "RidgeFixedPointResult",
@@ -52,4 +55,5 @@ __all__ = [
     "solver_memory_sweep",
     "standardize_features",
     "tanh_equilibrium_diagnostics",
+    "tanh_implicit_input_gradient",
 ]
