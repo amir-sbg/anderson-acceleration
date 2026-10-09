@@ -313,12 +313,20 @@ def fit_softmax_readout(
 
 def readout_predict(features: np.ndarray, weights: np.ndarray, bias: np.ndarray) -> np.ndarray:
     features = np.asarray(features, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    bias = np.asarray(bias, dtype=float)
     if features.ndim != 2:
         raise ValueError("features must be two-dimensional")
     if weights.ndim != 2 or bias.ndim != 1:
         raise ValueError("weights must be a matrix and bias must be a vector")
     if features.shape[1] != weights.shape[0] or weights.shape[1] != bias.shape[0]:
         raise ValueError("readout shapes are inconsistent")
+    if not (
+        np.all(np.isfinite(features))
+        and np.all(np.isfinite(weights))
+        and np.all(np.isfinite(bias))
+    ):
+        raise ValueError("readout inputs must contain only finite values")
     return np.argmax(features @ weights + bias, axis=1)
 
 

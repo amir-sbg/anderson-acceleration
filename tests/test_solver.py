@@ -17,6 +17,7 @@ from anderson_acceleration.experiments import (
     make_equilibrium_weights,
     make_two_moons,
     readout_accuracy,
+    readout_predict,
     solver_memory_sweep,
     standardize_features,
 )
@@ -248,6 +249,25 @@ def test_tanh_equilibrium_rejects_shape_mismatch() -> None:
             np.eye(3) * 0.1,
             np.ones((2, 2)),
             np.zeros(3),
+        )
+
+
+def test_readout_predict_accepts_array_like_parameters() -> None:
+    predictions = readout_predict(
+        [[1.0, 0.0], [0.0, 1.0]],
+        [[2.0, -1.0], [-1.0, 2.0]],
+        [0.0, 0.0],
+    )
+
+    np.testing.assert_array_equal(predictions, np.array([0, 1]))
+
+
+def test_readout_predict_rejects_non_finite_inputs() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        readout_predict(
+            [[1.0, np.nan]],
+            [[1.0], [0.0]],
+            [0.0],
         )
 
 
