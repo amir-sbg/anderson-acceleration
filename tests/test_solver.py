@@ -99,6 +99,9 @@ def test_residual_diagnostics_report_solver_progress() -> None:
     assert report["best_iteration"] == 3
     assert report["best_residual"] == pytest.approx(0.2)
     assert report["residual_reduction"] == pytest.approx(1.0 / 0.21)
+    assert report["log10_residual_reduction"] == pytest.approx(np.log10(1.0 / 0.21))
+    assert report["last_residual_ratio"] == pytest.approx(1.05)
+    assert report["median_residual_ratio"] == pytest.approx(0.5)
     assert not report["monotone_nonincreasing"]
 
 

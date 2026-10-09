@@ -39,6 +39,7 @@ def residual_diagnostics(
     best_index = int(np.argmin(values))
     initial = float(values[0])
     final = float(values[-1])
+    ratios = _residual_ratios(values)
     recent = values[-min(stagnation_window, len(values)) :]
     monotone = bool(np.all(np.diff(values) <= 1e-12))
     return {
@@ -48,6 +49,9 @@ def residual_diagnostics(
         "best_residual": float(values[best_index]),
         "best_iteration": best_index + 1,
         "residual_reduction": float(initial / max(final, 1e-300)),
+        "log10_residual_reduction": float(np.log10(max(initial, 1e-300) / max(final, 1e-300))),
+        "last_residual_ratio": float(ratios[-1]) if ratios.size else 1.0,
+        "median_residual_ratio": float(np.median(ratios)) if ratios.size else 1.0,
         "monotone_nonincreasing": monotone,
         "stagnated": bool(
             (recent[0] - recent[-1]) <= improvement_tol * max(recent[0], 1e-300)
@@ -196,11 +200,18 @@ def _mixing_coefficients(residuals: Sequence[np.ndarray], regularization: float)
         return np.linalg.lstsq(augmented, rhs, rcond=None)[0][:count]
 
 
+def _residual_ratios(values: np.ndarray) -> np.ndarray:
+    if values.size < 2:
+        return np.empty(0, dtype=float)
+    previous = np.maximum(values[:-1], 1e-300)
+    return values[1:] / previous
+
+
 def _evaluate_fixed_point(
     fixed_point: FixedPointMap,
     x: np.ndarray,
     expected_shape: tuple[int, ...],
-) -> tuple[np.ndarray, bool]:
+) -> np.ndarray:
     value = _as_float_array(fixed_point(x.copy()), "fixed_point(x)")
 
     if value.shape != expected_shape:
@@ -219,7 +230,7 @@ def _guarded_candidate(
     current_residual_norm: float,
     original_shape: tuple[int, ...],
     guard_factor: float,
-) -> np.ndarray:
+) -> tuple[np.ndarray, bool]:
     candidate = candidate_flat.reshape(original_shape)
     mapped = _evaluate_fixed_point(fixed_point, candidate, original_shape).reshape(-1)
     candidate_residual_norm = float(np.linalg.norm(mapped - candidate_flat))
