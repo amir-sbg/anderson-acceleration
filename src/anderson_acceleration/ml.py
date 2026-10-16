@@ -35,6 +35,14 @@ class ImplicitInputGradientResult:
     adjoint: ImplicitAdjointResult
 
 
+@dataclass(frozen=True)
+class ImplicitParameterGradientResult:
+    recurrent_gradient: np.ndarray
+    input_weight_gradient: np.ndarray
+    bias_gradient: np.ndarray
+    adjoint: ImplicitAdjointResult
+
+
 def solve_tanh_equilibrium(
     input_vector,
     recurrent_weight,
@@ -177,6 +185,35 @@ def tanh_implicit_input_gradient(
     activation_derivative = 1.0 - hidden**2
     input_gradient = input_matrix.T @ (activation_derivative * adjoint.adjoint)
     return ImplicitInputGradientResult(input_gradient=input_gradient, adjoint=adjoint)
+
+
+def tanh_implicit_parameter_gradients(
+    hidden_state,
+    input_vector,
+    recurrent_weight,
+    input_weight,
+    hidden_gradient,
+) -> ImplicitParameterGradientResult:
+    """Differentiate a converged tanh equilibrium with respect to its parameters."""
+
+    hidden = _as_vector(hidden_state, "hidden_state")
+    inputs = _as_vector(input_vector, "input_vector")
+    recurrent = _as_matrix(recurrent_weight, "recurrent_weight")
+    input_matrix = _as_matrix(input_weight, "input_weight")
+    hidden_dim = hidden.shape[0]
+    if recurrent.shape != (hidden_dim, hidden_dim):
+        raise ValueError("recurrent_weight must have shape (hidden_dim, hidden_dim)")
+    if input_matrix.shape != (hidden_dim, inputs.shape[0]):
+        raise ValueError("input_weight must have shape (hidden_dim, input_dim)")
+
+    adjoint = solve_tanh_adjoint(hidden, recurrent, hidden_gradient)
+    preactivation_gradient = (1.0 - hidden**2) * adjoint.adjoint
+    return ImplicitParameterGradientResult(
+        recurrent_gradient=np.outer(preactivation_gradient, hidden),
+        input_weight_gradient=np.outer(preactivation_gradient, inputs),
+        bias_gradient=preactivation_gradient,
+        adjoint=adjoint,
+    )
 
 
 def _readout(hidden_state, readout_weight, readout_bias) -> np.ndarray:

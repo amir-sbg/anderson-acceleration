@@ -8,6 +8,7 @@ from anderson_acceleration import (
     solve_tanh_equilibrium,
     tanh_equilibrium_diagnostics,
     tanh_implicit_input_gradient,
+    tanh_implicit_parameter_gradients,
 )
 from anderson_acceleration.experiments import (
     EquilibriumWeights,
@@ -243,6 +244,39 @@ def test_implicit_input_gradient_matches_finite_difference() -> None:
         finite_difference[index] = hidden_gradient @ (plus_hidden - minus_hidden) / (2 * epsilon)
 
     np.testing.assert_allclose(result.input_gradient, finite_difference, rtol=1e-5, atol=1e-7)
+
+
+def test_implicit_parameter_gradients_match_finite_difference() -> None:
+    x = np.array([0.3, -0.2])
+    recurrent = np.array([[0.20, -0.04], [0.03, 0.15]])
+    input_weight = np.array([[0.5, -0.1], [0.2, 0.4]])
+    bias = np.array([0.01, -0.02])
+    hidden_gradient = np.array([0.7, -0.3])
+    hidden = solve_tanh_equilibrium(
+        x, recurrent, input_weight, bias, tol=1e-12, max_iter=60
+    ).hidden_state
+    result = tanh_implicit_parameter_gradients(
+        hidden, x, recurrent, input_weight, hidden_gradient
+    )
+
+    epsilon = 1e-5
+    numerical_bias = np.zeros_like(bias)
+    for index in range(len(bias)):
+        plus = bias.copy()
+        minus = bias.copy()
+        plus[index] += epsilon
+        minus[index] -= epsilon
+        plus_hidden = solve_tanh_equilibrium(
+            x, recurrent, input_weight, plus, tol=1e-12, max_iter=60
+        ).hidden_state
+        minus_hidden = solve_tanh_equilibrium(
+            x, recurrent, input_weight, minus, tol=1e-12, max_iter=60
+        ).hidden_state
+        numerical_bias[index] = hidden_gradient @ (plus_hidden - minus_hidden) / (2 * epsilon)
+
+    np.testing.assert_allclose(result.bias_gradient, numerical_bias, rtol=1e-5, atol=1e-7)
+    assert result.recurrent_gradient.shape == recurrent.shape
+    assert result.input_weight_gradient.shape == input_weight.shape
 
 
 def test_tanh_equilibrium_rejects_shape_mismatch() -> None:
