@@ -330,6 +330,67 @@ def readout_predict(features: np.ndarray, weights: np.ndarray, bias: np.ndarray)
     return np.argmax(features @ weights + bias, axis=1)
 
 
+def readout_probabilities(
+    features: np.ndarray,
+    weights: np.ndarray,
+    bias: np.ndarray,
+) -> np.ndarray:
+    features = np.asarray(features, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    bias = np.asarray(bias, dtype=float)
+    readout_predict(features, weights, bias)
+    return _softmax(features @ weights + bias)
+
+
+def readout_probability_metrics(
+    features: np.ndarray,
+    labels: np.ndarray,
+    weights: np.ndarray,
+    bias: np.ndarray,
+    *,
+    calibration_bins: int = 10,
+) -> dict[str, float]:
+    if calibration_bins < 2:
+        raise ValueError("calibration_bins must be at least 2")
+    probabilities = readout_probabilities(features, weights, bias)
+    labels = np.asarray(labels, dtype=int)
+    if labels.ndim != 1 or labels.shape[0] != probabilities.shape[0]:
+        raise ValueError("labels must be one-dimensional and match features")
+    if np.any(labels < 0) or np.any(labels >= probabilities.shape[1]):
+        raise ValueError("labels are outside the readout class range")
+
+    predictions = np.argmax(probabilities, axis=1)
+    confidence = np.max(probabilities, axis=1)
+    targets = np.eye(probabilities.shape[1])[labels]
+    entropy = -np.sum(
+        probabilities * np.log(np.clip(probabilities, 1e-12, 1.0)),
+        axis=1,
+    )
+    edges = np.linspace(0.0, 1.0, calibration_bins + 1)
+    assignments = np.minimum(
+        np.digitize(confidence, edges[1:-1]),
+        calibration_bins - 1,
+    )
+    calibration_error = 0.0
+    for index in range(calibration_bins):
+        mask = assignments == index
+        if np.any(mask):
+            calibration_error += float(np.mean(mask)) * abs(
+                float(np.mean(predictions[mask] == labels[mask]))
+                - float(np.mean(confidence[mask]))
+            )
+    return {
+        "accuracy": float(np.mean(predictions == labels)),
+        "negative_log_likelihood": float(
+            -np.mean(np.log(np.clip(probabilities[np.arange(len(labels)), labels], 1e-12, 1.0)))
+        ),
+        "multiclass_brier_score": float(np.mean(np.sum((probabilities - targets) ** 2, axis=1))),
+        "mean_confidence": float(np.mean(confidence)),
+        "mean_entropy": float(np.mean(entropy)),
+        "expected_calibration_error": float(calibration_error),
+    }
+
+
 def readout_accuracy(
     features: np.ndarray,
     labels: np.ndarray,

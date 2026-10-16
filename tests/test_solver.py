@@ -18,6 +18,8 @@ from anderson_acceleration.experiments import (
     make_equilibrium_weights,
     make_two_moons,
     readout_accuracy,
+    readout_probabilities,
+    readout_probability_metrics,
     readout_predict,
     solver_memory_sweep,
     standardize_features,
@@ -426,6 +428,18 @@ def test_softmax_readout_learns_simple_boundary() -> None:
     assert result.train_accuracy == 1.0
     assert result.loss_history[-1] < result.loss_history[0]
     assert readout_accuracy(features, labels, result.weights, result.bias) == 1.0
+    probabilities = readout_probabilities(features, result.weights, result.bias)
+    np.testing.assert_allclose(probabilities.sum(axis=1), np.ones(len(features)))
+    metrics = readout_probability_metrics(
+        features,
+        labels,
+        result.weights,
+        result.bias,
+        calibration_bins=3,
+    )
+    assert metrics["accuracy"] == 1.0
+    assert metrics["negative_log_likelihood"] < 0.2
+    assert 0.0 <= metrics["expected_calibration_error"] <= 1.0
 
 
 def test_ridge_fixed_point_matches_closed_form_solution() -> None:

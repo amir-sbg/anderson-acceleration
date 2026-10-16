@@ -18,7 +18,7 @@ the solver stores recent residuals `g(x) - x`, solves a small constrained least-
 - local Jacobian norm, spectral radius, and contraction-margin checks
 - implicit adjoint, input-gradient, and parameter-gradient solves with backward-system conditioning diagnostics
 - a two-moons classifier using converged hidden states as features
-- train-statistic feature standardization and a softmax readout
+- train-statistic feature standardization and a softmax readout with NLL, Brier, entropy, and calibration diagnostics
 - a ridge-regression gradient fixed-point experiment
 - memory sweeps for comparing convergence cost and stability
 
