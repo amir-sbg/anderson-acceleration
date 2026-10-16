@@ -13,6 +13,7 @@ from anderson_acceleration import (
 from anderson_acceleration.experiments import (
     EquilibriumWeights,
     equilibrium_features,
+    equilibrium_stability_summary,
     fit_ridge_fixed_point,
     fit_softmax_readout,
     make_equilibrium_weights,
@@ -359,6 +360,15 @@ def test_equilibrium_features_return_solver_diagnostics() -> None:
     assert len(result.iterations) == 8
     assert result.convergence_rate == 1.0
     assert max(result.residuals) < 1e-6
+
+    stability = equilibrium_stability_summary(
+        result.hidden_states,
+        weights.recurrent_weight,
+    )
+    assert stability["samples"] == 8
+    assert stability["norm_contractive_fraction"] == 1.0
+    assert stability["spectral_radius_stable_fraction"] == 1.0
+    assert stability["max_spectral_radius"] < 1.0
 
 
 def test_solver_memory_sweep_compares_equilibrium_settings() -> None:

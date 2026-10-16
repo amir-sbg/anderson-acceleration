@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from .ml import solve_tanh_equilibrium
+from .ml import solve_tanh_equilibrium, tanh_equilibrium_diagnostics
 from .solver import AndersonResult, anderson_accelerate, residual_diagnostics
 
 
@@ -189,6 +189,42 @@ def solver_memory_sweep(
             )
         )
     return tuple(rows)
+
+
+def equilibrium_stability_summary(
+    hidden_states: np.ndarray,
+    recurrent_weight: np.ndarray,
+) -> dict[str, float | int]:
+    """Aggregate local contraction diagnostics over a batch of equilibria."""
+
+    states = np.asarray(hidden_states, dtype=float)
+    recurrent = np.asarray(recurrent_weight, dtype=float)
+    if states.ndim != 2 or 0 in states.shape:
+        raise ValueError("hidden_states must be a non-empty matrix")
+    if recurrent.shape != (states.shape[1], states.shape[1]):
+        raise ValueError("recurrent_weight must match the hidden dimension")
+    if not np.all(np.isfinite(states)) or not np.all(np.isfinite(recurrent)):
+        raise ValueError("stability inputs must contain only finite values")
+
+    diagnostics = [
+        tanh_equilibrium_diagnostics(state, recurrent)
+        for state in states
+    ]
+    local_norms = np.asarray([row.local_jacobian_norm for row in diagnostics])
+    spectral_radii = np.asarray(
+        [row.local_jacobian_spectral_radius for row in diagnostics]
+    )
+    margins = 1.0 - local_norms
+    return {
+        "samples": len(diagnostics),
+        "mean_local_jacobian_norm": float(local_norms.mean()),
+        "max_local_jacobian_norm": float(local_norms.max()),
+        "mean_spectral_radius": float(spectral_radii.mean()),
+        "max_spectral_radius": float(spectral_radii.max()),
+        "minimum_contraction_margin": float(margins.min()),
+        "norm_contractive_fraction": float(np.mean(local_norms < 1.0)),
+        "spectral_radius_stable_fraction": float(np.mean(spectral_radii < 1.0)),
+    }
 
 
 def standardize_features(
