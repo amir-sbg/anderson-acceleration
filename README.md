@@ -15,6 +15,7 @@ the solver stores recent residuals `g(x) - x`, solves a small constrained least-
 - scalar, vector, and matrix-shaped fixed-point solves
 - convergence and residual-history diagnostics
 - an implicit tanh layer of the form `h = tanh(W_h h + W_x x + b)`
+- guarded implicit solves with optional fail-fast handling for unconverged states
 - local Jacobian norm, spectral radius, contraction-margin checks, and batch stability summaries
 - implicit adjoint, input-gradient, and parameter-gradient solves with backward-system conditioning diagnostics
 - a two-moons classifier using converged hidden states as features

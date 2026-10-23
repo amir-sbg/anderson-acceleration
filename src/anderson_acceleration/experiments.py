@@ -120,6 +120,8 @@ def equilibrium_features(
     beta: float = 1.0,
     tol: float = 1e-7,
     max_iter: int = 80,
+    residual_guard: bool = False,
+    guard_factor: float = 1.25,
 ) -> EquilibriumFeatureResult:
     inputs = np.asarray(inputs, dtype=float)
     if inputs.ndim != 2 or 0 in inputs.shape:
@@ -140,6 +142,8 @@ def equilibrium_features(
             beta=beta,
             tol=tol,
             max_iter=max_iter,
+            residual_guard=residual_guard,
+            guard_factor=guard_factor,
         )
         hidden_states.append(result.hidden_state)
         iterations.append(result.solver.iterations)
@@ -162,6 +166,8 @@ def solver_memory_sweep(
     beta: float = 1.0,
     tol: float = 1e-7,
     max_iter: int = 80,
+    residual_guard: bool = False,
+    guard_factor: float = 1.25,
 ) -> tuple[SolverSweepRow, ...]:
     if not memories:
         raise ValueError("memories must contain at least one value")
@@ -177,6 +183,8 @@ def solver_memory_sweep(
             beta=beta,
             tol=tol,
             max_iter=max_iter,
+            residual_guard=residual_guard,
+            guard_factor=guard_factor,
         )
         rows.append(
             SolverSweepRow(

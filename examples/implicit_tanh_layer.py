@@ -35,12 +35,15 @@ def main() -> None:
         memory=4,
         tol=1e-9,
         max_iter=50,
+        residual_guard=True,
+        require_convergence=True,
     )
 
     print("Implicit tanh layer")
     print(f"converged: {result.solver.converged}")
     print(f"iterations: {result.solver.iterations}")
     print(f"residual: {result.solver.residual_norm:.3e}")
+    print(f"guard rejections: {result.solver.guard_rejections}")
     diagnostics = tanh_equilibrium_diagnostics(result.hidden_state, recurrent)
     print(f"local Jacobian norm: {diagnostics.local_jacobian_norm:.3f}")
     print(f"contraction margin: {diagnostics.contraction_margin:.3f}")

@@ -56,7 +56,12 @@ def solve_tanh_equilibrium(
     beta: float = 1.0,
     regularization: float = 1e-10,
     tol: float = 1e-7,
+    rtol: float = 0.0,
     max_iter: int = 100,
+    residual_guard: bool = False,
+    guard_factor: float = 1.25,
+    restart_on_rejection: bool = True,
+    require_convergence: bool = False,
 ) -> ImplicitLayerResult:
     """Solve a small implicit tanh layer.
 
@@ -66,8 +71,9 @@ def solve_tanh_equilibrium(
     ``h = tanh(W_h h + W_x x + b)``
 
     Anderson acceleration is used only for the forward equilibrium solve. The
-    helper intentionally does not implement backpropagation; it is a compact
-    experiment for studying the numerical behavior of equilibrium layers.
+    Set ``residual_guard=True`` for maps that are only locally contractive.
+    ``require_convergence`` is useful in inference paths where returning an
+    unconverged hidden state would be harder to detect than a failed solve.
     """
 
     x = _as_vector(input_vector, "input_vector")
@@ -103,8 +109,17 @@ def solve_tanh_equilibrium(
         beta=beta,
         regularization=regularization,
         tol=tol,
+        rtol=rtol,
         max_iter=max_iter,
+        residual_guard=residual_guard,
+        guard_factor=guard_factor,
+        restart_on_rejection=restart_on_rejection,
     )
+    if require_convergence and not solver.converged:
+        raise RuntimeError(
+            "implicit tanh layer did not converge: "
+            f"residual={solver.residual_norm:.3e} after {solver.iterations} iterations"
+        )
     hidden_state = solver.solution
     logits = _readout(hidden_state, readout_weight, readout_bias)
     return ImplicitLayerResult(hidden_state=hidden_state, logits=logits, solver=solver)

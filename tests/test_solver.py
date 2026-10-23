@@ -186,6 +186,36 @@ def test_tanh_equilibrium_layer_solves_fixed_point() -> None:
     assert result.logits.shape == (2,)
 
 
+def test_tanh_equilibrium_exposes_guarded_restarts() -> None:
+    result = solve_tanh_equilibrium(
+        np.array([0.0]),
+        np.array([[3.0]]),
+        np.array([[0.0]]),
+        np.array([0.0]),
+        initial_state=np.array([0.2]),
+        memory=3,
+        max_iter=8,
+        residual_guard=True,
+        guard_factor=1.0,
+    )
+
+    assert result.solver.guard_rejections > 0
+    assert result.solver.history_restarts == result.solver.guard_rejections
+
+
+def test_tanh_equilibrium_can_require_convergence() -> None:
+    with pytest.raises(RuntimeError, match="did not converge"):
+        solve_tanh_equilibrium(
+            np.array([1.0]),
+            np.array([[0.9]]),
+            np.array([[1.0]]),
+            np.array([0.0]),
+            max_iter=1,
+            tol=1e-12,
+            require_convergence=True,
+        )
+
+
 def test_tanh_equilibrium_diagnostics_report_local_contraction() -> None:
     diagnostics = tanh_equilibrium_diagnostics(
         hidden_state=np.zeros(3),
