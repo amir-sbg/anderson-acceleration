@@ -22,6 +22,7 @@ class AndersonResult:
     residual_history: tuple[float, ...]
     accelerated_steps: int
     guard_rejections: int
+    history_restarts: int
 
 
 def residual_diagnostics(
@@ -71,6 +72,7 @@ def anderson_accelerate(
     max_iter: int = 100,
     residual_guard: bool = False,
     guard_factor: float = 1.25,
+    restart_on_rejection: bool = True,
 ) -> AndersonResult:
     """Solve ``x = fixed_point(x)`` with Anderson acceleration.
 
@@ -102,9 +104,23 @@ def anderson_accelerate(
         Picard update.
     guard_factor:
         Allowed residual-growth factor for guarded accelerated candidates.
+    restart_on_rejection:
+        Clear the Anderson history after a guarded candidate is rejected. This
+        prevents the same unstable residual subspace from immediately
+        proposing another bad step.
     """
 
-    _validate_options(memory, beta, regularization, tol, rtol, max_iter, guard_factor)
+    _validate_options(
+        memory,
+        beta,
+        regularization,
+        tol,
+        rtol,
+        max_iter,
+        guard_factor,
+        residual_guard,
+        restart_on_rejection,
+    )
 
     x = _as_float_array(x0, "x0")
     original_shape = x.shape
@@ -116,6 +132,7 @@ def anderson_accelerate(
     residual_history: list[float] = []
     accelerated_steps = 0
     guard_rejections = 0
+    history_restarts = 0
 
     for iteration in range(1, max_iter + 1):
         g = _evaluate_fixed_point(fixed_point, x_flat.reshape(original_shape), original_shape)
@@ -134,6 +151,7 @@ def anderson_accelerate(
                 residual_history=tuple(residual_history),
                 accelerated_steps=accelerated_steps,
                 guard_rejections=guard_rejections,
+                history_restarts=history_restarts,
             )
 
         x_history.append(x_flat.copy())
@@ -162,6 +180,11 @@ def anderson_accelerate(
                 )
                 guard_rejections += int(rejected)
                 accelerated_steps += int(not rejected)
+                if rejected and restart_on_rejection:
+                    x_history.clear()
+                    g_history.clear()
+                    f_history.clear()
+                    history_restarts += 1
             else:
                 x_flat = candidate
                 accelerated_steps += 1
@@ -174,6 +197,7 @@ def anderson_accelerate(
         residual_history=tuple(residual_history),
         accelerated_steps=accelerated_steps,
         guard_rejections=guard_rejections,
+        history_restarts=history_restarts,
     )
 
 
@@ -256,6 +280,8 @@ def _validate_options(
     rtol: float,
     max_iter: int,
     guard_factor: float,
+    residual_guard: bool,
+    restart_on_rejection: bool,
 ) -> None:
     if not isinstance(memory, Integral):
         raise ValueError("memory must be an integer")
@@ -282,3 +308,7 @@ def _validate_options(
         raise ValueError("max_iter must be at least 1")
     if guard_factor < 1.0:
         raise ValueError("guard_factor must be at least 1")
+    if not isinstance(residual_guard, bool):
+        raise ValueError("residual_guard must be a boolean")
+    if not isinstance(restart_on_rejection, bool):
+        raise ValueError("restart_on_rejection must be a boolean")

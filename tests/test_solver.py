@@ -141,7 +141,9 @@ def test_residual_guard_rejects_unstable_accelerated_steps() -> None:
     assert max(guarded.residual_history) < max(unguarded.residual_history)
     assert guarded.residual_norm < unguarded.residual_norm
     assert guarded.guard_rejections > 0
+    assert guarded.history_restarts == guarded.guard_rejections
     assert unguarded.guard_rejections == 0
+    assert unguarded.history_restarts == 0
     assert unguarded.accelerated_steps > 0
 
 
@@ -334,6 +336,8 @@ def test_rejects_shape_changing_maps() -> None:
         ({"tol": np.inf}, "tol"),
         ({"rtol": -1e-3}, "rtol"),
         ({"guard_factor": 0.9}, "guard_factor"),
+        ({"residual_guard": 1}, "residual_guard"),
+        ({"restart_on_rejection": 1}, "restart_on_rejection"),
     ],
 )
 def test_rejects_invalid_solver_options(kwargs: dict[str, float], message: str) -> None:
